@@ -527,6 +527,89 @@ void main() {
         await gesture.up();
       },
     );
+
+    Future<void> flingToBounce(
+      WidgetTesterX tester,
+      SheetScrollController scrollController,
+    ) async {
+      await tester.dragUpward(find.byId('scrollable'), deltaY: 100);
+      await tester.pumpAndSettle();
+      expect(scrollController.offset, 100);
+
+      await tester.fling(find.byId('scrollable'), Offset(0, 400), 3000);
+      for (var i = 0; i < 120 && scrollController.offset >= -5; i++) {
+        await tester.pump(Duration(milliseconds: 8));
+      }
+      expect(scrollController.offset, lessThan(-5));
+    }
+
+    testWidgets(
+      'onlyFromTop: touching the content during its top bounce and dragging '
+      'down moves the sheet without a visual jump of the content',
+      (tester) async {
+        final env = boilerplate(
+          scrollConfiguration: SheetScrollConfiguration(
+            scrollSyncMode: SheetScrollHandlingBehavior.onlyFromTop,
+          ),
+        );
+        await tester.pumpWidget(env.testWidget);
+        await flingToBounce(WidgetTesterX(tester), env.scrollController);
+
+        final sheetTopBefore = tester.getTopLeft(find.byId('sheet')).dy;
+        final contentTopBefore = sheetTopBefore - env.scrollController.offset;
+
+        final gesture = await tester.startGesture(
+          tester.getCenter(find.byId('sheet')),
+        );
+        await gesture.moveDownwardBy(30);
+        await tester.pump();
+        await gesture.moveDownwardBy(1);
+        await tester.pump();
+        final sheetTopCaught = tester.getTopLeft(find.byId('sheet')).dy;
+        final contentTopCaught = sheetTopCaught - env.scrollController.offset;
+        expect(env.scrollController.offset, 0);
+        expect(sheetTopCaught, greaterThan(sheetTopBefore));
+        expect(contentTopCaught - contentTopBefore, closeTo(31, 3));
+
+        await gesture.moveDownwardBy(60);
+        await tester.pump();
+        expect(
+          tester.getTopLeft(find.byId('sheet')).dy,
+          greaterThan(sheetTopCaught),
+        );
+        expect(env.scrollController.offset, 0);
+
+        await gesture.moveUpwardBy(300);
+        await gesture.up();
+        await tester.pumpAndSettle();
+        expect(tester.getTopLeft(find.byId('sheet')).dy, 300);
+        expect(env.scrollController.offset, greaterThan(0));
+      },
+    );
+
+    testWidgets(
+      'onlyFromTop: a drag that starts while the content is scrolled away '
+      'from the top never moves the sheet',
+      (tester) async {
+        final env = boilerplate(
+          scrollConfiguration: SheetScrollConfiguration(
+            scrollSyncMode: SheetScrollHandlingBehavior.onlyFromTop,
+          ),
+        );
+        await tester.pumpWidget(env.testWidget);
+        await tester.dragUpward(find.byId('scrollable'), deltaY: 100);
+        await tester.pumpAndSettle();
+
+        final gesture = await tester.startGesture(
+          tester.getCenter(find.byId('sheet')),
+        );
+        await gesture.moveDownwardBy(50);
+        await tester.pump();
+        expect(tester.getTopLeft(find.byId('sheet')).dy, 300);
+        expect(env.scrollController.offset, 50);
+        await gesture.up();
+      },
+    );
   });
 
   group('delegateUnhandledOverscrollToChild', () {

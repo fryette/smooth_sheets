@@ -242,6 +242,8 @@ mixin ScrollAwareSheetModelMixin<C extends SheetModelConfig> on SheetModel<C>
       return drag;
     }
 
+    _handOverContentOverscroll(scrollPosition);
+
     final heldPreviousVelocity = switch (activity) {
       final HoldScrollDrivenSheetActivity holdActivity =>
         holdActivity.heldPreviousVelocity,
@@ -340,11 +342,22 @@ mixin ScrollAwareSheetModelMixin<C extends SheetModelConfig> on SheetModel<C>
     }
   }
 
-  bool _shouldHandleScroll(ScrollPosition scrollPosition) =>
-      switch (scrollConfiguration.scrollSyncMode) {
-        SheetScrollHandlingBehavior.always => true,
-        SheetScrollHandlingBehavior.onlyFromTop => scrollPosition.pixels == 0,
-      };
+  void _handOverContentOverscroll(ScrollPosition scrollPosition) {
+    final overscroll = scrollPosition.minScrollExtent - scrollPosition.pixels;
+    if (overscroll <= 0) return;
+    scrollPosition.correctPixels(scrollPosition.minScrollExtent);
+    final appliedDelta = physics.applyPhysicsToOffset(-overscroll, this);
+    offset = max(offset + appliedDelta, minOffset);
+  }
+
+  bool _shouldHandleScroll(
+    ScrollPosition scrollPosition,
+  ) => switch (scrollConfiguration.scrollSyncMode) {
+    SheetScrollHandlingBehavior.always => true,
+    SheetScrollHandlingBehavior.onlyFromTop => FloatComp.distance(
+      context.devicePixelRatio,
+    ).isLessThanOrApprox(scrollPosition.pixels, scrollPosition.minScrollExtent),
+  };
 }
 
 /// A mixin for [SheetActivity]s that is associated with
