@@ -154,7 +154,8 @@ mixin ScrollAwareSheetModelMixin<C extends SheetModelConfig> on SheetModel<C>
   };
 
   @override
-  bool get hasPrimaryScrollPosition => _primaryScrollPosition != null;
+  bool isPrimaryScrollPosition(SheetScrollPosition position) =>
+      position == _primaryScrollPosition;
 
   @override
   void addScrollPosition(SheetScrollPosition position) {
@@ -195,7 +196,7 @@ mixin ScrollAwareSheetModelMixin<C extends SheetModelConfig> on SheetModel<C>
 
   @override
   void goIdleWithScrollPosition() {
-    assert(hasPrimaryScrollPosition);
+    assert(_primaryScrollPosition != null);
     _primaryScrollPosition!.goIdle(calledByDelegate: true);
     goIdle();
   }
@@ -922,7 +923,9 @@ class SheetScrollController extends ScrollController {
 /// `goIdle`, `hold`, `drag`, and `goBallistic` to this object.
 abstract class _SheetScrollPositionDelegate {
   // TODO: Remove the following 3 methods.
-  bool get hasPrimaryScrollPosition;
+  /// Whether [position] is the scroll position that is currently
+  /// driving the sheet position.
+  bool isPrimaryScrollPosition(SheetScrollPosition position);
 
   void addScrollPosition(SheetScrollPosition position);
 
@@ -1004,7 +1007,7 @@ class SheetScrollPosition extends ScrollPositionWithSingleContext {
   @override
   void goIdle({bool calledByDelegate = false}) {
     if (_delegate != null &&
-        _delegate!.hasPrimaryScrollPosition &&
+        _delegate!.isPrimaryScrollPosition(this) &&
         !calledByDelegate) {
       _delegate!.goIdleWithScrollPosition();
     } else {
@@ -1048,7 +1051,7 @@ class SheetScrollPosition extends ScrollPositionWithSingleContext {
   @override
   void goBallistic(double velocity, {bool calledByOwner = false}) {
     if (_delegate != null &&
-        _delegate!.hasPrimaryScrollPosition &&
+        _delegate!.isPrimaryScrollPosition(this) &&
         !calledByOwner) {
       _delegate!.goBallisticWithScrollPosition(
         velocity: velocity,
