@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:material_ui/material_ui.dart';
 import 'package:smooth_sheets/smooth_sheets.dart';
 
@@ -67,9 +69,11 @@ void main() {
     ) async {
       await tester.pumpWidget(boilerplate(height: 600));
       var isDone = false;
-      controller
-          .animateTo(SheetOffset.proportionalToViewport(0.2))
-          .then((_) => isDone = true);
+      unawaited(
+        controller
+            .animateTo(SheetOffset.proportionalToViewport(0.2))
+            .then((_) => isDone = true),
+      );
       await tester.pump();
       await tester.pump(Duration(milliseconds: 50));
 
