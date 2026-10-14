@@ -62,6 +62,24 @@ void main() {
       expect(controller.metrics?.offset, 250);
     });
 
+    testWidgets('completes the future of an animation it interrupts', (
+      tester,
+    ) async {
+      await tester.pumpWidget(boilerplate(height: 600));
+      var isDone = false;
+      controller
+          .animateTo(SheetOffset.proportionalToViewport(0.2))
+          .then((_) => isDone = true);
+      await tester.pump();
+      await tester.pump(Duration(milliseconds: 50));
+
+      controller.jumpTo(SheetOffset.proportionalToViewport(0.5));
+      await tester.pump();
+
+      expect(isDone, isTrue);
+      expect(controller.metrics?.offset, 300);
+    });
+
     testWidgets('lets a later drag take over', (tester) async {
       await tester.pumpWidget(boilerplate(height: 600));
       controller.jumpTo(SheetOffset.proportionalToViewport(0.5));
