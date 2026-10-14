@@ -1,4 +1,3 @@
-import 'package:flutter/gestures.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:smooth_sheets/smooth_sheets.dart';
 
