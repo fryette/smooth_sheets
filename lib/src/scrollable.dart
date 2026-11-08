@@ -7,6 +7,7 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/physics.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 
@@ -43,6 +44,13 @@ enum SheetScrollHandlingBehavior {
   /// for [BouncingScrollPhysics] as usual.
   onlyFromTop,
 }
+
+/// The maximum overscroll distance past the top edge of the scrollable
+/// content that [SheetScrollHandlingBehavior.onlyFromTop] still treats as
+/// "at the top".
+@internal
+@visibleForTesting
+const double kOnlyFromTopScrollTolerance = kTouchSlop;
 
 /// Defines how the sheet integrates with scrollable content.
 abstract class SheetScrollConfiguration {
@@ -275,10 +283,7 @@ mixin ScrollAwareSheetModelMixin<C extends SheetModelConfig> on SheetModel<C>
     required double velocity,
     required SheetScrollPosition scrollPosition,
   }) {
-    if (FloatComp.distance(context.devicePixelRatio).isLessThanOrApprox(
-      scrollPosition.pixels,
-      scrollPosition.minScrollExtent,
-    )) {
+    if (offset < maxOffset) {
       final simulation = physics.createBallisticSimulation(
         velocity,
         this,
@@ -346,11 +351,11 @@ mixin ScrollAwareSheetModelMixin<C extends SheetModelConfig> on SheetModel<C>
   bool _shouldHandleScroll(ScrollPosition scrollPosition) =>
       switch (scrollConfiguration.scrollSyncMode) {
         SheetScrollHandlingBehavior.always => true,
-        SheetScrollHandlingBehavior.onlyFromTop =>
-          FloatComp.distance(context.devicePixelRatio).isLessThanOrApprox(
-            scrollPosition.pixels,
-            scrollPosition.minScrollExtent,
-          ),
+        SheetScrollHandlingBehavior.onlyFromTop => nearEqual(
+          scrollPosition.pixels,
+          scrollPosition.minScrollExtent,
+          kOnlyFromTopScrollTolerance,
+        ),
       };
 }
 
@@ -443,7 +448,7 @@ mixin _ScrollAwareSheetActivityMixin
         delta -= scrollPosition.pixels - oldScrollPixels;
       }
       // If the content cannot be scrolled down anymore, drag the sheet down
-      // to make a shrinking effect (if needed).
+      // to make an overdrag-driven effect, like bouncing (if needed).
       if (cmp.isLessThanOrApprox(scrollPosition.pixels, minScrollPixels)) {
         final physicsAppliedDelta = _applyPhysicsToOffset(delta, newOffset);
         assert(cmp.isLessThanOrApprox(physicsAppliedDelta.abs(), delta.abs()));
@@ -786,9 +791,9 @@ class SheetScrollable extends StatefulWidget {
   /// Creates a widget that wires an ancestor sheet and its scrollable content
   /// below this widget.
   const SheetScrollable({
-    super.key,
     required this.controller,
     required this.child,
+    super.key,
   });
 
   /// The scroll controller that should be attached to the [child] scrollable,
