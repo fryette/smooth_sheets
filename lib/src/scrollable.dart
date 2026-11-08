@@ -7,7 +7,6 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
-import 'package:flutter/physics.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 
@@ -45,9 +44,9 @@ enum SheetScrollHandlingBehavior {
   onlyFromTop,
 }
 
-/// The maximum overscroll distance past the top edge of the scrollable
-/// content that [SheetScrollHandlingBehavior.onlyFromTop] still treats as
-/// "at the top".
+/// The maximum scroll distance below the top edge of the scrollable content
+/// that [SheetScrollHandlingBehavior.onlyFromTop] still treats as "at the
+/// top". Any overscroll past the top edge also counts as the top.
 @internal
 @visibleForTesting
 const double kOnlyFromTopScrollTolerance = kTouchSlop;
@@ -283,7 +282,11 @@ mixin ScrollAwareSheetModelMixin<C extends SheetModelConfig> on SheetModel<C>
     required double velocity,
     required SheetScrollPosition scrollPosition,
   }) {
-    if (offset < maxOffset) {
+    if (offset < maxOffset ||
+        FloatComp.distance(context.devicePixelRatio).isLessThanOrApprox(
+          scrollPosition.pixels,
+          scrollPosition.minScrollExtent,
+        )) {
       final simulation = physics.createBallisticSimulation(
         velocity,
         this,
@@ -351,11 +354,9 @@ mixin ScrollAwareSheetModelMixin<C extends SheetModelConfig> on SheetModel<C>
   bool _shouldHandleScroll(ScrollPosition scrollPosition) =>
       switch (scrollConfiguration.scrollSyncMode) {
         SheetScrollHandlingBehavior.always => true,
-        SheetScrollHandlingBehavior.onlyFromTop => nearEqual(
-          scrollPosition.pixels,
-          scrollPosition.minScrollExtent,
-          kOnlyFromTopScrollTolerance,
-        ),
+        SheetScrollHandlingBehavior.onlyFromTop =>
+          scrollPosition.pixels <=
+              scrollPosition.minScrollExtent + kOnlyFromTopScrollTolerance,
       };
 }
 
